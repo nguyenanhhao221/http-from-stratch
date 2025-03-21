@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -15,10 +16,11 @@ func main() {
 	}
 
 	// Read the file 8 bytes at a time
-	b1 := make([]byte, 8)
+	buffer := make([]byte, 8)
 
+	currentLineStr := ""
 	for {
-		n, err := f.Read(b1)
+		n, err := f.Read(buffer)
 		if err != nil && err != io.EOF {
 			log.Fatalln(err)
 		}
@@ -26,6 +28,11 @@ func main() {
 		if n == 0 {
 			break
 		}
-		fmt.Printf("read: %s\n", string(b1[:n]))
+		parts := strings.Split(string(buffer[:n]), "\n")
+		for i := range len(parts) - 1 {
+			fmt.Printf("read: %s%s\n", currentLineStr, parts[i])
+			currentLineStr = ""
+		}
+		currentLineStr += parts[len(parts)-1]
 	}
 }
