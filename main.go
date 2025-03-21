@@ -22,6 +22,7 @@ func main() {
 		if err != nil && err != io.EOF {
 			log.Fatalln(err)
 		}
+		// n == 0 means that we reach the end of the file
 		if n == 0 {
 			break
 		}
