@@ -1,24 +1,37 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
-	"os"
+	"net"
 	"strings"
 )
 
+const port = ":42069"
+
 func main() {
-	// open the file
-	f, err := os.Open("message.txt")
+	listener, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalln(err)
 	}
+	defer listener.Close()
+	log.Println("Listen for TCP traffic on", port)
 
-	ch := getLinesChannel(f)
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			// handle error
+			log.Fatalln("error: ", err.Error())
+		}
+		log.Println("Accept connection from: ", conn.RemoteAddr())
 
-	for line := range ch {
-		fmt.Println("read:", line)
+		lineCh := getLinesChannel(conn)
+		for line := range lineCh {
+			fmt.Println(line)
+		}
+		log.Printf("Connection to %s closed \n", conn.RemoteAddr())
 	}
 }
 
@@ -33,12 +46,15 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 		defer close(ch)
 		for {
 			n, err := f.Read(buffer)
-			if err != nil && err != io.EOF {
-				log.Fatalln(err)
-			}
-			// n == 0 means that we reach the end of the file
-			if n == 0 {
-				break
+			if err != nil {
+				if currentLineStr != "" {
+					ch <- currentLineStr
+				}
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				fmt.Printf("error: %s\n", err.Error())
+				return
 			}
 			parts := strings.Split(string(buffer[:n]), "\n")
 			for i := range len(parts) - 1 {
