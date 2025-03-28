@@ -16,7 +16,11 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer listener.Close()
+	defer func() {
+		if err := listener.Close(); err != nil {
+			log.Printf("err closing listener :%v\n", err)
+		}
+	}()
 	log.Println("Listen for TCP traffic on", port)
 
 	for {
@@ -42,7 +46,11 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 
 	currentLineStr := ""
 	go func() {
-		defer f.Close()
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Printf("err closing file %v\n", err)
+			}
+		}()
 		defer close(ch)
 		for {
 			n, err := f.Read(buffer)
