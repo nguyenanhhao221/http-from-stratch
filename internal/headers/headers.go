@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-	"unicode"
 )
 
 const crlf = "\r\n"
@@ -60,7 +59,7 @@ func validateFieldName(key string) error {
 	}
 	allowedSpecials := "!#$%&'*+-.^_`|~"
 	for _, c := range key {
-		if !unicode.IsLetter(c) && !unicode.IsDigit(c) && !strings.ContainsRune(allowedSpecials, c) {
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && !strings.ContainsRune(allowedSpecials, c) {
 			return fmt.Errorf("field name contains invalid character: %q", c)
 		}
 	}
