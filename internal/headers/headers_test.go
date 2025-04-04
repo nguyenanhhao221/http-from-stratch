@@ -68,6 +68,14 @@ func TestHeadersParse(t *testing.T) {
 	assert.Equal(t, 23, n)
 	assert.False(t, done)
 
+	// Test: field-name with number still work
+	headers = NewHeaders()
+	data = []byte("H1st: localhost:42069\r\n\r\n")
+	n, done, err = headers.Parse(data)
+	require.NoError(t, err)
+	assert.Equal(t, 23, n)
+	assert.False(t, done)
+
 	// Test: Invalid field name length
 	headers = NewHeaders()
 	data = []byte(": localhost:42069\r\n\r\n")
