@@ -8,6 +8,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type chunkReader struct {
+	data            string
+	numBytesPerRead int
+	pos             int
+}
+
+func (cr *chunkReader) Read(p []byte) (n int, err error) {
+	if cr.pos >= len(cr.data) {
+		return 0, io.EOF
+	}
+	endIndex := min(cr.pos+cr.numBytesPerRead, len(cr.data))
+	n = copy(p, cr.data[cr.pos:endIndex])
+	cr.pos += n
+	if n > cr.numBytesPerRead {
+		n = cr.numBytesPerRead
+		cr.pos -= n - cr.numBytesPerRead
+	}
+	return n, nil
+}
+
 func TestRequestLineParse(t *testing.T) {
 	// Test: Good GET Request line
 	reader := &chunkReader{
@@ -68,24 +88,4 @@ func TestRequestLineParse(t *testing.T) {
 	}
 	_, err = RequestFromReader(reader)
 	require.Error(t, err)
-}
-
-type chunkReader struct {
-	data            string
-	numBytesPerRead int
-	pos             int
-}
-
-func (cr *chunkReader) Read(p []byte) (n int, err error) {
-	if cr.pos >= len(cr.data) {
-		return 0, io.EOF
-	}
-	endIndex := min(cr.pos+cr.numBytesPerRead, len(cr.data))
-	n = copy(p, cr.data[cr.pos:endIndex])
-	cr.pos += n
-	if n > cr.numBytesPerRead {
-		n = cr.numBytesPerRead
-		cr.pos -= n - cr.numBytesPerRead
-	}
-	return n, nil
 }
