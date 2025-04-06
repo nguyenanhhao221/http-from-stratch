@@ -97,4 +97,17 @@ func TestHeadersParse(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, 0, n)
 	assert.False(t, done)
+
+	// Test: valid headers that match exist header field name
+	// Set-Person: lane-loves-go;
+	// Set-Person: prime-loves-zig;
+	// Set-Person: tj-loves-ocaml;
+	// This is valid and should become set-person: lane-loves-go, prime-loves-zig, tj-loves-ocaml
+	headers = Headers{"set-person": "lane-loves-go"}
+	data = []byte("Set-Person: prime-loves-zig\r\n\r\n")
+	_, done, err = headers.Parse(data)
+	require.NoError(t, err)
+	// assert.Equal(t, 0, n)
+	assert.False(t, done)
+	assert.Equal(t, "lane-loves-go, prime-loves-zig", headers["set-person"])
 }

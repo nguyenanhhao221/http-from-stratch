@@ -42,15 +42,19 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 		return 0, false, err
 	}
 
-	// Convert key to lowercase
-	key = strings.ToLower(key)
-
 	h.Set(key, string(value))
 	return idx + 2, false, nil
 }
 
 func (h Headers) Set(key, value string) {
-	h[key] = value
+	// Convert key to lowercase
+	key = strings.ToLower(key)
+
+	if existVal, ok := h[key]; ok {
+		h[key] = strings.Join([]string{existVal, value}, ", ")
+	} else {
+		h[key] = value
+	}
 }
 
 func validateFieldName(key string) error {
