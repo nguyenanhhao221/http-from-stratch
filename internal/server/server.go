@@ -5,6 +5,8 @@ import (
 	"log"
 	"net"
 	"sync/atomic"
+
+	"httpfromtcp.haonguyen.tech/internal/response"
 )
 
 type Server struct {
@@ -52,12 +54,14 @@ func (s *Server) handle(conn net.Conn) {
 			log.Printf("error closing connection in handle: %v\n", err)
 		}
 	}()
-	hardCodeResponse := "HTTP/1.1 200 OK\r\n" + // Status line
-		"Content-Type: text/plain\r\n" + // Example header
-		"\r\n" + // Blank line to separate headers from the body
-		"Hello World!\n" // Body
-	_, err := conn.Write([]byte(hardCodeResponse))
+
+	err := response.WriteStatusLine(conn, response.StatusOK)
 	if err != nil {
-		log.Printf("error wring response in handle %v\n", err)
+		log.Printf("error handle connection when writing status line: %v\n", err)
+	}
+
+	err = response.WriteHeaders(conn, response.GetDefaultHeaders(0))
+	if err != nil {
+		log.Printf("error handle connection when writing headers: %v\n", err)
 	}
 }
