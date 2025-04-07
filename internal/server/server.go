@@ -33,7 +33,6 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) listen() {
-	log.Println("listen is called")
 	for {
 		conn, err := s.listener.Accept()
 		if err != nil {
