@@ -111,3 +111,30 @@ func TestHeadersParse(t *testing.T) {
 	assert.False(t, done)
 	assert.Equal(t, "lane-loves-go, prime-loves-zig", headers["set-person"])
 }
+
+func TestHeaders_Get(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		key   string
+		want  string
+		want2 bool
+	}{
+		{name: "valid get", key: "hello", want: "world", want2: true},
+		{name: "valid get with uppercase key", key: "HELLO", want: "world", want2: true},
+		{name: "get non exist key", key: "non-exist", want: "", want2: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := NewHeaders()
+			h.Set("hello", "world")
+			got, got2 := h.Get(tt.key)
+			if tt.want != got {
+				t.Errorf("Get() = %v, want %v", got, tt.want)
+			}
+			if tt.want2 != got2 {
+				t.Errorf("Get() = %v, want %v", got2, tt.want2)
+			}
+		})
+	}
+}

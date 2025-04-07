@@ -57,6 +57,13 @@ func (h Headers) Set(key, value string) {
 	}
 }
 
+func (h Headers) Get(key string) (string, bool) {
+	// Convert to lower case because http header is case-insensitive
+	lowerCaseKey := strings.ToLower(key)
+	v, ok := h[lowerCaseKey]
+	return v, ok
+}
+
 func validateFieldName(key string) error {
 	if len(key) < 1 {
 		return fmt.Errorf("field name length must be at least 1")
