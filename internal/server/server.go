@@ -1,9 +1,9 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"net"
-	"strconv"
 	"sync/atomic"
 )
 
@@ -13,8 +13,7 @@ type Server struct {
 }
 
 func Serve(port int) (*Server, error) {
-	portStr := ":" + strconv.Itoa(port)
-	listener, err := net.Listen("tcp", portStr)
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return nil, err
 	}
