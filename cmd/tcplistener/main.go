@@ -34,10 +34,12 @@ func main() {
 		if err != nil {
 			log.Printf("error RequestFromReader: %v\n", err)
 		}
+		// Print the request's line
 		fmt.Println("Request line:")
 		fmt.Println("- Method:", request.RequestLine.Method)
 		fmt.Println("- Target:", request.RequestLine.RequestTarget)
 		fmt.Println("- Version:", request.RequestLine.HttpVersion)
+		// Print the request's Headers
 		fmt.Println("Headers:")
 		for key, value := range request.Headers {
 			fmt.Printf("- %s: %s\n", key, value)
