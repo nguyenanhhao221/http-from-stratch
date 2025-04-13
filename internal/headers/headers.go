@@ -76,3 +76,8 @@ func validateFieldName(key string) error {
 	}
 	return nil
 }
+
+func (h Headers) Override(key, value string) {
+	key = strings.ToLower(key)
+	h[key] = value
+}

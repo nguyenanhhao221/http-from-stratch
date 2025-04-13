@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"net"
@@ -10,6 +9,8 @@ import (
 	"httpfromtcp.haonguyen.tech/internal/request"
 	"httpfromtcp.haonguyen.tech/internal/response"
 )
+
+type Handler func(w *response.Writer, req *request.Request)
 
 type Server struct {
 	listener net.Listener
@@ -53,6 +54,7 @@ func (s *Server) listen() {
 }
 
 func (s *Server) handle(conn net.Conn) {
+	w := response.NewWriter(conn)
 	defer func() {
 		if err := conn.Close(); err != nil {
 			log.Printf("error closing connection in handle: %v\n", err)
@@ -62,36 +64,23 @@ func (s *Server) handle(conn net.Conn) {
 	r, err := request.RequestFromReader(conn)
 	if err != nil {
 		log.Printf("error: parsing request: %v\n", err)
-		hErr := &HandlerError{
-			StatusCode: response.StatusBadRequest,
-			Message:    err.Error(),
+		err := w.WriteStatusLine(response.StatusBadRequest)
+		if err != nil {
+			log.Printf("error when write status line %v\n", err)
+			return
 		}
-		hErr.Write(conn)
+		body := fmt.Appendf(nil, "error: parsing request: %v\n", err)
+		err = w.WriteHeaders(response.GetDefaultHeaders(len(body)))
+		if err != nil {
+			log.Printf("error when write header %v\n", err)
+			return
+		}
+		_, err = w.WriteBody(body)
+		if err != nil {
+			log.Printf("error when write body %v\n", err)
+			return
+		}
 		return
 	}
-	buf := bytes.NewBuffer([]byte{})
-	handlerErr := s.handler(buf, r)
-	if handlerErr != nil {
-		handlerErr.Write(conn)
-		return
-	}
-
-	b := buf.Bytes()
-
-	err = response.WriteStatusLine(conn, response.StatusOK)
-	if err != nil {
-		log.Printf("error handle connection when writing status line: %v\n", err)
-		return
-	}
-	headers := response.GetDefaultHeaders(len(b))
-	err = response.WriteHeaders(conn, headers)
-	if err != nil {
-		log.Printf("error handle connection when writing headers: %v\n", err)
-		return
-	}
-	_, err = conn.Write(b)
-	if err != nil {
-		log.Printf("error writing body: %v\n", err)
-		return
-	}
+	s.handler(w, r)
 }
