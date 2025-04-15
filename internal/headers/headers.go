@@ -64,6 +64,16 @@ func (h Headers) Get(key string) (string, bool) {
 	return v, ok
 }
 
+func (h Headers) Override(key, value string) {
+	key = strings.ToLower(key)
+	h[key] = value
+}
+
+func (h Headers) Delete(key string) {
+	key = strings.ToLower(key)
+	delete(h, key)
+}
+
 func validateFieldName(key string) error {
 	if len(key) < 1 {
 		return fmt.Errorf("field name length must be at least 1")
@@ -75,9 +85,4 @@ func validateFieldName(key string) error {
 		}
 	}
 	return nil
-}
-
-func (h Headers) Override(key, value string) {
-	key = strings.ToLower(key)
-	h[key] = value
 }

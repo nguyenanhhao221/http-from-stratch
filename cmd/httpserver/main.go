@@ -1,9 +1,14 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"httpfromtcp.haonguyen.tech/internal/request"
@@ -33,15 +38,16 @@ func main() {
 }
 
 func testHandler(w *response.Writer, req *request.Request) {
-	switch req.RequestLine.RequestTarget {
-	case "/yourproblem":
+	if req.RequestLine.RequestTarget == "/yourproblem" {
 		handler400(w, req)
 		return
-
-	case "/myproblem":
+	} else if req.RequestLine.RequestTarget == "/myproblem" {
 		handler500(w, req)
 		return
-	default:
+	} else if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin") {
+		handlerProxy(w, req)
+		return
+	} else {
 		handler200(w, req)
 		return
 	}
@@ -128,5 +134,64 @@ func handler200(w *response.Writer, _ *request.Request) {
 	if _, err := w.WriteBody(body); err != nil {
 		log.Printf("error: %v\n", err)
 		return
+	}
+}
+
+func handlerProxy(w *response.Writer, req *request.Request) {
+	// trim the request target, to get the correct endpoint later to make the actual request
+	query := strings.TrimPrefix(req.RequestLine.RequestTarget, "/httpbin")
+	if query == req.RequestLine.RequestTarget {
+		handler500(w, req)
+		return
+	}
+
+	endpoint := fmt.Sprintf("https://httpbin.org%s", query)
+	res, err := http.Get(endpoint)
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Printf("error closing response body when using proxy: %v\n", err)
+		}
+	}()
+
+	if err != nil {
+		log.Printf("error when calling %s: %v\n", endpoint, err)
+		handler500(w, req)
+	}
+	if err := w.WriteStatusLine(response.StatusOK); err != nil {
+		log.Printf("error: %v\n", err)
+		return
+	}
+	// get the header and remove content-type, set Transfer-Encoding
+	h := response.GetDefaultHeaders(0)
+	h.Delete("Content-Length")
+	h.Delete("Connection")
+	h.Set("Transfer-Encoding", "chunked")
+	if err := w.WriteHeaders(h); err != nil {
+		log.Printf("error: %v\n", err)
+		return
+	}
+
+	// Read the response from httpbin
+	b := make([]byte, 32)
+	for {
+		numBytesRead, err := res.Body.Read(b)
+		if numBytesRead > 0 {
+			_, err = w.WriteChunkedBody(b[:numBytesRead])
+			if err != nil {
+				log.Printf("error write chunk body: %v\n", err)
+				return
+			}
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				if _, err := w.WriteChunkedBodyDone(); err != nil {
+					log.Printf("error WriteChunkedBodyDone: %v", err)
+				}
+				break
+			}
+			log.Printf("error reading buffer: %v\n", err)
+			return
+		}
+
 	}
 }
