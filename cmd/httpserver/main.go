@@ -46,6 +46,9 @@ func testHandler(w *response.Writer, req *request.Request) {
 	} else if req.RequestLine.RequestTarget == "/myproblem" {
 		handler500(w, req)
 		return
+	} else if req.RequestLine.RequestTarget == "/video" {
+		handlerVideo(w, req)
+		return
 	} else if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin") {
 		handlerProxy(w, req)
 		return
@@ -209,6 +212,36 @@ func handlerProxy(w *response.Writer, req *request.Request) {
 	err = w.WriteTrailers(trailers)
 	if err != nil {
 		log.Printf("error write trailer: %v\n", err)
+		return
+	}
+}
+
+func handlerVideo(w *response.Writer, req *request.Request) {
+	log.Println("Getting video file for you")
+	videoFile, err := os.ReadFile("assets/vim.mp4")
+	if err != nil {
+		log.Printf("error ReadFile for video: %v\n", err)
+		handler500(w, req)
+		return
+	}
+	// Write status line
+	err = w.WriteStatusLine(response.StatusOK)
+	if err != nil {
+		log.Printf("error write status line :%v\n", err)
+		return
+	}
+
+	// Write header
+	h := response.GetDefaultHeaders(len(videoFile))
+	h.Override("Content-Type", "video/mp4")
+	err = w.WriteHeaders(h)
+	if err != nil {
+		log.Printf("error when write header %v\n", err)
+		return
+	}
+	_, err = w.WriteBody(videoFile)
+	if err != nil {
+		log.Printf("error when write body, for video file %v\n", err)
 		return
 	}
 }
