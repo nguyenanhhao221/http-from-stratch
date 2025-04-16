@@ -14,6 +14,7 @@ const (
 	writerStateStatusLine writerState = iota
 	writerStateHeaders
 	writerStateBody
+	writerStateTrailers
 )
 
 func NewWriter(w io.Writer) *Writer {
@@ -73,18 +74,41 @@ func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
 	if w.writerState != writerStateBody {
 		return 0, fmt.Errorf("cannot write body in state: %d", w.writerState)
 	}
+	nTotal := 0
 	chunkSize := len(p)
-	// Write the chunk size with \r\n
+	// Write the chunk size with <length of data>\r\n
 	str := fmt.Sprintf("%x\r\n", chunkSize)
-	_, err := w.writer.Write([]byte(str))
+	n, err := w.writer.Write([]byte(str))
 	if err != nil {
 		return 0, err
 	}
+	nTotal += n
 
-	return w.writer.Write(append(p, []byte("\r\n")...))
+	n, err = w.writer.Write(append(p, []byte("\r\n")...))
+	if err != nil {
+		return nTotal, err
+	}
+	nTotal += n
+	return nTotal, nil
 }
 
 func (w *Writer) WriteChunkedBodyDone() (int, error) {
-	b := []byte("0\r\n\r\n")
+	b := []byte("0\r\n")
+	w.writerState = writerStateTrailers
 	return w.writer.Write(b)
+}
+
+func (w *Writer) WriteTrailers(h headers.Headers) error {
+	if w.writerState != writerStateTrailers {
+		return fmt.Errorf("cannot write trailers in state %d", w.writerState)
+	}
+	defer func() { w.writerState = writerStateBody }()
+	for k, v := range h {
+		_, err := fmt.Fprintf(w.writer, "%s: %s\r\n", k, v)
+		if err != nil {
+			return err
+		}
+	}
+	_, err := w.writer.Write([]byte("\r\n"))
+	return err
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"httpfromtcp.haonguyen.tech/internal/headers"
 	"httpfromtcp.haonguyen.tech/internal/request"
 	"httpfromtcp.haonguyen.tech/internal/response"
 	"httpfromtcp.haonguyen.tech/internal/server"
@@ -166,10 +168,14 @@ func handlerProxy(w *response.Writer, req *request.Request) {
 	h.Delete("Content-Length")
 	h.Delete("Connection")
 	h.Set("Transfer-Encoding", "chunked")
+	h.Set("Trailer", "X-Content-SHA256")
+	h.Set("Trailer", "X-Content-Length")
 	if err := w.WriteHeaders(h); err != nil {
 		log.Printf("error: %v\n", err)
 		return
 	}
+
+	fullBody := make([]byte, 0)
 
 	// Read the response from httpbin
 	b := make([]byte, 32)
@@ -181,17 +187,28 @@ func handlerProxy(w *response.Writer, req *request.Request) {
 				log.Printf("error write chunk body: %v\n", err)
 				return
 			}
+			fullBody = append(fullBody, b[:numBytesRead]...)
 		}
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				if _, err := w.WriteChunkedBodyDone(); err != nil {
-					log.Printf("error WriteChunkedBodyDone: %v", err)
-				}
 				break
 			}
 			log.Printf("error reading buffer: %v\n", err)
 			return
 		}
+	}
+	if _, err := w.WriteChunkedBodyDone(); err != nil {
+		log.Printf("error WriteChunkedBodyDone: %v", err)
+		return
+	}
 
+	trailers := headers.NewHeaders()
+	sha256 := fmt.Sprintf("%x", sha256.Sum256(fullBody))
+	trailers.Override("X-Content-SHA256", sha256)
+	trailers.Override("X-Content-Length", fmt.Sprintf("%d", len(fullBody)))
+	err = w.WriteTrailers(trailers)
+	if err != nil {
+		log.Printf("error write trailer: %v\n", err)
+		return
 	}
 }
