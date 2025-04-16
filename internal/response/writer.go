@@ -69,7 +69,6 @@ func (w *Writer) WriteBody(p []byte) (int, error) {
 	return w.writer.Write(p)
 }
 
-// TODO:  implement actual chunk body write
 func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
 	if w.writerState != writerStateBody {
 		return 0, fmt.Errorf("cannot write body in state: %d", w.writerState)
